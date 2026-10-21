@@ -7,6 +7,7 @@
  * PSP executable file.
  */
 
+#include <strings.h>
 #include "../src/common.h"
 #include "../src/resource/package-pkg.h"
 #include "../src/texture.h"
@@ -932,7 +933,7 @@ typedef struct FileListEntry_ {
 } FileListEntry;
 
 static int stricmp_ptr(const void *a, const void *b)
-    {return stricmp(*(const char **)a, *(const char **)b);}
+    {return strcasecmp(*(const char **)a, *(const char **)b);}
 
 static void add_to_file_list(FileListEntry **filelist_ptr,
                              uint32_t *nfiles_ptr,
@@ -1008,11 +1009,11 @@ static void generate_data(const char *in_path, const char *out_path,
         const char *path = filelist[i].path;
         if (strlen(path) < 4) {  // Should be impossible, but just in case
             bytes_other += filelist[i].size;
-        } else if (stricmp(path + strlen(path)-4, ".png") == 0) {
+        } else if (strcasecmp(path + strlen(path)-4, ".png") == 0) {
             bytes_png += filelist[i].size;
-        } else if (stricmp(path + strlen(path)-4, ".ogg") == 0) {
+        } else if (strcasecmp(path + strlen(path)-4, ".ogg") == 0) {
             bytes_ogg += filelist[i].size;
-        } else if (stricmp(path + strlen(path)-4, ".lua") == 0) {
+        } else if (strcasecmp(path + strlen(path)-4, ".lua") == 0) {
             // Ignore
         } else {
             bytes_other += filelist[i].size;
@@ -1039,7 +1040,7 @@ static void generate_data(const char *in_path, const char *out_path,
         build_read_file(in_path, path, &filedata, &filesize);
 
         if (strlen(path) >= 4
-         && stricmp(path + strlen(path)-4, ".png") == 0
+         && strcasecmp(path + strlen(path)-4, ".png") == 0
         ) {
             /* Convert .png to .tex */
             bdone_png += filelist[i].size;
@@ -1065,7 +1066,7 @@ static void generate_data(const char *in_path, const char *out_path,
             free(texdata);
 
         } else if (strlen(path) >= 4
-                && stricmp(path + strlen(path)-4, ".ogg") == 0
+                && strcasecmp(path + strlen(path)-4, ".ogg") == 0
         ) {
             /* Convert .ogg to .mp3 */
             bdone_ogg += filelist[i].size;
@@ -1091,7 +1092,7 @@ static void generate_data(const char *in_path, const char *out_path,
             free(mp3data);
 
         } else if (strlen(path) >= 4
-                && stricmp(path + strlen(path)-4, ".lua") == 0
+                && strcasecmp(path + strlen(path)-4, ".lua") == 0
         ) {
             /* Ignore .lua files entirely */
 
@@ -1227,7 +1228,7 @@ static int generate_tex(const char *pngpath,
 
     unsigned int i;
     for (i = 0; i < lenof(tex_special_list); i++) {
-        if (stricmp(pngpath, tex_special_list[i].path) == 0) {
+        if (strcasecmp(pngpath, tex_special_list[i].path) == 0) {
             break;
         }
     }
@@ -2043,7 +2044,7 @@ typedef struct FileInfo_ {
 #define NAME(a)  (namebuf + PKG_NAMEOFS(index[(a)].nameofs_flags))
 
 static int stricmp_fileinfo(const void *a, const void *b)
-    {return stricmp(((FileInfo *)a)->pathname, ((FileInfo *)b)->pathname);}
+    {return strcasecmp(((FileInfo *)a)->pathname, ((FileInfo *)b)->pathname);}
 
 static void package_add_file(FileInfo **filelist_ptr, uint32_t *nfiles_ptr,
                              const char *fullpath, const char *localpath,
@@ -2158,7 +2159,7 @@ static void build_package(const char *in_path, const char *out_path,
         uint32_t j;
         for (j = 0; j < nfiles; j++) {
             if (index[j].hash == hash
-             && stricmp(filelist[i].pathname, NAME(j)) == 0
+             && strcasecmp(filelist[i].pathname, NAME(j)) == 0
             ) {
                 filelist[i].index_entry = j;
                 break;
@@ -2332,7 +2333,7 @@ static void package_add_file(FileInfo **filelist_ptr, uint32_t *nfiles_ptr,
                              uint32_t filesize, uint32_t *namesize_ptr)
 {
     if (strlen(localpath) >= 4
-     && stricmp(localpath + strlen(localpath)-4, ".lua") == 0
+     && strcasecmp(localpath + strlen(localpath)-4, ".lua") == 0
     ) {
         return;
     }
@@ -2374,7 +2375,7 @@ static void package_sort(PKGIndexEntry * const index, const uint32_t nfiles,
 {
     #define LESS(a)  (index[(a)].hash < pivot_hash   \
                    || (index[(a)].hash == pivot_hash \
-                       && stricmp(NAME(a), pivot_name) < 0))
+                       && strcasecmp(NAME(a), pivot_name) < 0))
     #define SWAP(a,b) do {        \
         typeof(index[(a)]) tmp;   \
         tmp = index[(a)];         \

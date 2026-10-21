@@ -2986,7 +2986,7 @@ int Continuity::getEntityFlag(const std::string &sceneName, int id)
 	os << sceneName << ":" << id;
 	
 	std::ostringstream os2;
-	os2 << hash(os.str());
+	os2 << ::hash(os.str());
 	
 	return entityFlags[os2.str()];
 }
@@ -2997,7 +2997,7 @@ void Continuity::setEntityFlag(const std::string &sceneName, int id, int v)
 	os << sceneName << ":" << id;
 	
 	std::ostringstream os2;
-	os2 << hash(os.str());
+	os2 << ::hash(os.str());
 	
 	entityFlags[os2.str()] = v;
 }
@@ -3008,7 +3008,7 @@ void Continuity::setPathFlag(Path *p, int v)
 	os << "p:" << dsq->game->sceneName << ":" << p->nodes[0].position.x << ":" << p->nodes[0].position.y << ":" << removeSpaces(p->name);
 	
 	std::ostringstream os2;
-	os2 << hash(os.str());
+	os2 << ::hash(os.str());
 	
 	entityFlags[os2.str()] = v;
 }
@@ -3018,7 +3018,7 @@ int Continuity::getPathFlag(Path *p)
 	std::ostringstream os;
 	os << "p:" << dsq->game->sceneName << ":" << p->nodes[0].position.x << ":" << p->nodes[0].position.y << ":" << removeSpaces(p->name);
 	std::ostringstream os2;
-	os2 << hash(os.str());
+	os2 << ::hash(os.str());
 	return entityFlags[os2.str()];
 }
 

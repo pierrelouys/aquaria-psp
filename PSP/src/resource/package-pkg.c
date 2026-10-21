@@ -6,6 +6,7 @@
  * package files (a custom format used for Aquaria).
  */
 
+#include <strings.h>
 #include "../common.h"
 #include "../memory.h"
 #include "../resource.h"
@@ -224,13 +225,13 @@ static int package_pkg_file_info(PackageModuleInfo *module,
     const uint32_t hash = pkg_hash(path);
     int low = 0, high = info->nfiles-1;
     int i = info->nfiles / 2;
-    /* 注：stricmp()が大文字を小文字に変換して比較するという仕様に頼っている */
-    while (low <= high && stricmp(path, NAME(i)) != 0) {
+    /* 注：strcasecmp()が大文字を小文字に変換して比較するという仕様に頼っている */
+    while (low <= high && strcasecmp(path, NAME(i)) != 0) {
         if (hash < info->index[i].hash) {
             high = i-1;
         } else if (hash > info->index[i].hash) {
             low = i+1;
-        } else if (stricmp(path, NAME(i)) < 0) {
+        } else if (strcasecmp(path, NAME(i)) < 0) {
             high = i-1;
         } else {
             low = i+1;
@@ -287,7 +288,7 @@ static int package_aquaria_has_path(PackageModuleInfo *module, const char *path)
     while (strncmp(path, "./", 2) == 0) {
         path += 2;
     }
-    return strnicmp(path, "_mods/", 6) != 0;
+    return strncasecmp(path, "_mods/", 6) != 0;
 }
 
 /*-----------------------------------------------------------------------*/

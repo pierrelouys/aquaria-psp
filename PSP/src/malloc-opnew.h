@@ -36,7 +36,7 @@ inline void operator delete[](void *ptr, const char *file, int line) {
 
 /* Define a macro that converts ordinary "new" into a call to the debugging
  * version.  For some reason, this does _not_ work with "delete". */
-#define new new(__FILE__,__LINE__)
+// PSP FIX: disabled debug-new macro: #define new new(__FILE__,__LINE__)
 //#define delete delete(__FILE__,__LINE__)
 
 /*************************************************************************/

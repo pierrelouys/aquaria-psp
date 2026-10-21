@@ -26,6 +26,7 @@
  * lest the resultant palette end up suboptimal for all of them.
  */
 
+#include <strings.h>
 #include "../src/common.h"
 #include "../src/texture.h"
 
@@ -232,7 +233,7 @@ static int convert_to_8bpp(const char **files, unsigned int num_files,
             DMSG("Pathname too long: %s", files[i]);
             goto error_free_textures;
         }
-        if (stricmp(pathbuf + pathlen - 4, ".png") == 0) {
+        if (strcasecmp(pathbuf + pathlen - 4, ".png") == 0) {
             pathbuf[pathlen-4] = 0;
             pathlen -= 4;
         }
@@ -310,7 +311,7 @@ static int convert_to_32bpp(const char **files, unsigned int num_files,
             free(texture);
             return 0;
         }
-        if (stricmp(pathbuf + pathlen - 4, ".png") == 0) {
+        if (strcasecmp(pathbuf + pathlen - 4, ".png") == 0) {
             pathbuf[pathlen-4] = 0;
             pathlen -= 4;
         }

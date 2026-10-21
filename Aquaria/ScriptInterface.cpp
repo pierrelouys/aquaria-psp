@@ -8811,13 +8811,23 @@ lua_State *ScriptInterface::createLuaVM()
 	// Add hooks to monitor global get/set operations if requested.
 	if (complainOnGlobalVar)
 	{
-		if (!lua_getmetatable(state, LUA_GLOBALSINDEX))
+		#if LUA_VERSION_NUM >= 502
+        lua_pushglobaltable(state);
+        if (!lua_getmetatable(state, -1))
+#else
+        if (!lua_getmetatable(state, LUA_GLOBALSINDEX))
+#endif
 			lua_newtable(state);
 		lua_pushcfunction(state, l_indexWarnGlobal);
 		lua_setfield(state, -2, "__index");
 		lua_pushcfunction(state, l_newindexWarnGlobal);
 		lua_setfield(state, -2, "__newindex");
-		lua_setmetatable(state, LUA_GLOBALSINDEX);
+		#if LUA_VERSION_NUM >= 502
+        lua_setmetatable(state, -2);
+        lua_pop(state, 1); // Remove the global table pushed above.
+#else
+        lua_setmetatable(state, LUA_GLOBALSINDEX);
+#endif
 	}
 
 	// All done, return the new state.

@@ -136,7 +136,7 @@
 # define tmpfile __UNUSED_tmpfile
 #endif
 #define div     __UNUSED_div
-#define exp     __UNUSED_exp
+/* exp left unrenamed for modern C++ <cmath> compatibility */
 #define index   __UNUSED_index //なんでこんな一般変数名みたいなものを作るかなー
 #define gamma   __UNUSED_gamma
 #define y0      __UNUSED_y0
@@ -822,9 +822,9 @@ extern int intersect_lines(const Vector2f *P1, const Vector2f *v1,
  * 　　　　　切り捨てられている。なお、切り捨ての有無にかかわらず、文字列の
  * 　　　　　末尾に終端文字'\0'が付加される。format==NULLの場合、0を返す。
  */
-extern int32_t snprintf(char *buf, uint32_t size, const char *format, ...)
+extern int snprintf(char *buf, size_t size, const char *format, ...)
     FORMAT(3,4);
-extern int32_t vsnprintf(char *buf, uint32_t size, const char *format,
+extern int vsnprintf(char *buf, size_t size, const char *format,
                          va_list args);
 
 #endif  // !IN_TOOL

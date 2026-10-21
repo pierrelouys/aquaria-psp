@@ -1,3 +1,4 @@
+#include <strings.h>
 /*
  * Aquaria PSP port
  * Copyright (C) 2010 Andrew Church <achurch@achurch.org>
@@ -35,7 +36,7 @@
 #include "texture.h"
 
 #define PNG_USER_MEM_SUPPORTED
-#include <libpng14/png.h>
+#include <png.h>
 
 #ifdef DEBUG
 # undef texture_new
@@ -235,7 +236,7 @@ Texture *texture_load(const char *path, uint32_t mem_flags
         DMSG("Pathname too long: %s", path);
         return NULL;
     }
-    if (stricmp(pathbuf + pathlen - 4, ".png") == 0) {
+    if (strcasecmp(pathbuf + pathlen - 4, ".png") == 0) {
         pathbuf[pathlen-4] = 0;
         pathlen -= 4;
     }

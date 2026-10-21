@@ -556,7 +556,7 @@ int intersect_lines(const Vector2f *P1, const Vector2f *v1,
  * 　　　　　切り捨てられている。なお、切り捨ての有無にかかわらず、文字列の
  * 　　　　　末尾に終端文字'\0'が付加される。format==NULLの場合、0を返す。
  */
-int32_t snprintf(char *buf, uint32_t size, const char *format, ...)
+int snprintf(char *buf, size_t size, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -565,7 +565,7 @@ int32_t snprintf(char *buf, uint32_t size, const char *format, ...)
     return res;
 }
 
-int32_t vsnprintf(char *buf, uint32_t size, const char *format, va_list args)
+int vsnprintf(char *buf, size_t size, const char *format, va_list args)
 {
     int32_t total = 0;          // 結果文字列の合計バイト数
 

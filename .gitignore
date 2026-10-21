@@ -1,0 +1,7 @@
+*.o
+*.d
+*.pbp
+*.elf
+*.bak
+*.sfo
+*.prx

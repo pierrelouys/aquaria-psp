@@ -136,10 +136,10 @@ CFLAGS   = -pipe -g -O3 -G0 -I$(PSPSDK)/include \
 CXXFLAGS = -pipe -g -O3 -G0 -I$(PSPSDK)/include -fsigned-char -Wall $(-Werror)
 LDFLAGS  = -specs=$(PSPSDK)/lib/prxspecs -Wl,-q,-T$(PSPSDK)/lib/linkfile.prx \
            -L$(PSPSDK)/lib
-LIBS     = $(-llua) $(-lfreetype) $(-lvorbisfile) $(-lvorbis) $(-logg) \
-           -lpng -lz -lstdc++ -lm -lc \
-           -lpspaudio -lpspaudiocodec -lpspctrl -lpspdisplay -lpspge \
-           -lpsppower -lpsputility -lpspuser
+LIBS = $(-llua) $(-lfreetype) $(-lvorbisfile) $(-lvorbis) $(-logg) \
+       -lpng -lz -lbz2 -lstdc++ -lm -lc \
+       -lpspaudio -lpspaudiocodec -lpsppower \
+       -lpspctrl -lpspdisplay -lpspge
 
 ifeq ($(CAN_OVERRIDE_STRTOF),1)
 -DCAN_OVERRIDE_STRTOF = -DCAN_OVERRIDE_STRTOF
@@ -691,3 +691,7 @@ $(lua_OBJECTS:%.o=%.d) : %.d: %.c Makefile
 include $(ALL_OBJECTS:%.o=%.d)
 
 ###########################################################################
+
+# AQUARIA_PSP_GCC_COMPATIBILITY
+override CXXFLAGS += -fpermissive
+override LDFLAGS += -Wl,--allow-multiple-definition

@@ -54,6 +54,7 @@
  * 制御ファイルの各ラインの長さはLINEMAXバイト以下でなければならない。
  */
 
+#include <strings.h>
 #include "../src/common.h"
 #include "../src/resource/package-pkg.h"
 
@@ -511,7 +512,7 @@ static PKGIndexEntry *filelist_to_index(FileInfo *filelist, int nfiles,
         for (j = 0; j < nfiles; j++) {
 #define NAME(a)  (namebuf + PKG_NAMEOFS(index[(a)].nameofs_flags))
             if (index[j].hash == hash
-             && stricmp(filelist[i].pathname, NAME(j)) == 0
+             && strcasecmp(filelist[i].pathname, NAME(j)) == 0
             ) {
                 filelist[i].index_entry = j;
                 break;
@@ -660,7 +661,7 @@ static void pkg_sort(PKGIndexEntry * const index, const uint32_t nfiles,
 #define NAME(a)  (namebuf + PKG_NAMEOFS(index[(a)].nameofs_flags))
 #define LESS(a)  (index[(a)].hash < pivot_hash   \
                || (index[(a)].hash == pivot_hash \
-                   && stricmp(NAME(a), pivot_name) < 0))
+                   && strcasecmp(NAME(a), pivot_name) < 0))
 #define SWAP(a,b) do {        \
     typeof(index[(a)]) tmp;   \
     tmp = index[(a)];         \
