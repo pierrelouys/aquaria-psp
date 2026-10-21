@@ -17,14 +17,14 @@
 # cross-compilation for the PSP.  This should contain "include/stdio.h"
 # and "lib/libc.a", for example.
 
-PSPROOT = /usr/psp
+PSPROOT = $(shell psp-config --psp-prefix 2>/dev/null)
 
 #-------------------------------------
 
 # $(PSPSDK):  Directory into which the unofficial SDK from http://ps2dev.org
 # has been installed.  This should contain "include/pspuser.h", for example.
 
-PSPSDK = $(PSPROOT)/sdk
+PSPSDK = $(shell psp-config --pspsdk-path 2>/dev/null)
 
 #-------------------------------------
 
@@ -136,10 +136,10 @@ CFLAGS   = -pipe -g -O3 -G0 -I$(PSPSDK)/include \
 CXXFLAGS = -pipe -g -O3 -G0 -I$(PSPSDK)/include -fsigned-char -Wall $(-Werror)
 LDFLAGS  = -specs=$(PSPSDK)/lib/prxspecs -Wl,-q,-T$(PSPSDK)/lib/linkfile.prx \
            -L$(PSPSDK)/lib
-LIBS = $(-llua) $(-lfreetype) $(-lvorbisfile) $(-lvorbis) $(-logg) \
-       -lpng -lz -lbz2 -lstdc++ -lm -lc \
-       -lpspaudio -lpspaudiocodec -lpsppower \
-       -lpspctrl -lpspdisplay -lpspge
+LIBS     = $(-llua) $(-lfreetype) $(-lvorbisfile) $(-lvorbis) $(-logg) \
+           -lpng -lz -lbz2 -lstdc++ -lm -lc \
+           -lpspaudio -lpspaudiocodec -lpspctrl -lpspdisplay -lpspge \
+           -lpsppower -lpsputility
 
 ifeq ($(CAN_OVERRIDE_STRTOF),1)
 -DCAN_OVERRIDE_STRTOF = -DCAN_OVERRIDE_STRTOF
