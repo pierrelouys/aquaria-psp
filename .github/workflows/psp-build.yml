@@ -1,0 +1,62 @@
+
+name: Aquaria PSP CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-psp:
+    name: Build Aquaria for PSP
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/pspdev/pspdev:latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PSP libraries
+        run: |
+          psp-pacman -Sy --noconfirm psp-libraries
+
+      - name: Build EBOOT.PBP
+        shell: bash
+        run: |
+          set -o pipefail
+          cd PSP
+
+          echo "PSPDEV toolchain:"
+          psp-gcc --version
+          echo "PSPSDK: $(psp-config --pspsdk-path)"
+          echo "PSP prefix: $(psp-config --psp-prefix)"
+
+          make \
+            PSPROOT="$(psp-config --psp-prefix)" \
+            PSPSDK="$(psp-config --pspsdk-path)" \
+            EBOOT.PBP \
+            2>&1 | tee "$GITHUB_WORKSPACE/aquaria-build.log"
+
+          echo
+          echo "Import-fixup warnings:"
+          grep -cF 'stubs out of order' \
+            "$GITHUB_WORKSPACE/aquaria-build.log" || true
+
+          test -s EBOOT.PBP
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aquaria-psp-build
+          if-no-files-found: warn
+          path: |
+            PSP/EBOOT.PBP
+            PSP/aquaria.elf
+            PSP/aquaria.prx
+            aquaria-build.log
