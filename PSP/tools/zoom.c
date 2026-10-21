@@ -7,6 +7,8 @@
  * Schumacher (public domain).
  */
 
+#include <math.h>  /* Include before common.h symbol remapping on modern glibc. */
+
 #include "../src/common.h"
 #include "zoom.h"
 

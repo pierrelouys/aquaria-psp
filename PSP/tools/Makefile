@@ -9,122 +9,145 @@
 
 # System environment settings
 #
-# Note: Define GENERIC=1 to build AquariaPSPBuilder for a generic system.
-# This disables the use of SSE2 on 32-bit x86 and links the PNG/Ogg/LAME
-# libraries statically.
+# The asset converters are ordinary native Linux programs.  The default
+# build intentionally excludes the old GTK2 GUI builder, so converting
+# assets does not require GTK2 development packages.
 
 EXEEXT =
-# Be sure to define either IS_LITTLE_ENDIAN or IS_BIG_ENDIAN here.
 SYS_CFLAGS = -DIS_LITTLE_ENDIAN
-
-ARCH = $(shell uname -m)
-ifeq ($(ARCH),i686)
-ifneq ($(GENERIC),)
-SYS_CFLAGS += -mtune=generic
-else
+ARCH := $(shell uname -m)
+ifeq ($(GENERIC),)
+ifneq ($(filter x86_64 amd64,$(ARCH)),)
+SYS_CFLAGS += -DUSE_SSE2 -DARCH_AMD64
+else ifeq ($(ARCH),i686)
 SYS_CFLAGS += -msse2 -DUSE_SSE2
 endif
 endif
-ifeq ($(ARCH),x86_64)
-SYS_CFLAGS += -DUSE_SSE2 -DARCH_AMD64
-endif
 
-# Common programs/flags
+# Common programs/flags.  WERROR=1 can be used for a strict build; by default
+# warnings remain visible without making newer compiler diagnostics fatal.
 
 CC      = gcc
-CFLAGS  = -g -O2 -Wall -Wstrict-prototypes -Wmissing-prototypes -Werror
+CFLAGS  = -g -O2 -Wall -Wstrict-prototypes -Wmissing-prototypes
+ifeq ($(WERROR),1)
+CFLAGS += -Werror
+endif
 LDFLAGS =
 LIBS    =
+PKG_CONFIG ?= pkg-config
 
-# Flags for various libraries
+# These are host-side Linux tools, even when built from a shell configured for
+# the PSP SDK.  In particular, CPATH/C_INCLUDE_PATH can silently select the
+# PSP's newlib headers (causing host links to fail on symbols such as
+# _impure_ptr).  Likewise, the PSP pkg-config paths and library search path
+# must not leak into native converter builds.  HOST_ENV is overridable for
+# unusual host setups that intentionally use non-system host dependencies.
+HOST_ENV ?= env -u CPATH -u C_INCLUDE_PATH -u CPLUS_INCLUDE_PATH \
+               -u OBJC_INCLUDE_PATH -u LIBRARY_PATH -u COMPILER_PATH \
+               -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR \
+               -u PKG_CONFIG_SYSROOT_DIR
+HOST_PKG_CONFIG = $(HOST_ENV) $(PKG_CONFIG)
 
+# Resolve distro-specific include and linker flags through pkg-config when
+# available, with conventional library names as a fallback for installations
+# that provide headers/libraries but no .pc files.
+CFLAGS_png = $(shell $(HOST_PKG_CONFIG) --cflags libpng 2>/dev/null)
+LIBS_png = $(shell $(HOST_PKG_CONFIG) --libs libpng 2>/dev/null)
+ifeq ($(strip $(LIBS_png)),)
+LIBS_png = -lpng -lz
+endif
+
+CFLAGS_vorbis = $(shell $(HOST_PKG_CONFIG) --cflags vorbisfile 2>/dev/null)
+LIBS_vorbis = $(shell $(HOST_PKG_CONFIG) --libs vorbisfile 2>/dev/null)
+ifeq ($(strip $(LIBS_vorbis)),)
+LIBS_vorbis = -lvorbisfile -lvorbis -logg
+endif
+
+CFLAGS_lame = $(shell $(HOST_PKG_CONFIG) --cflags lame 2>/dev/null)
+LIBS_lame = $(shell $(HOST_PKG_CONFIG) --libs lame 2>/dev/null)
+ifeq ($(strip $(LIBS_lame)),)
+LIBS_lame = -lmp3lame
+endif
+
+# These flags are used only by the optional legacy GTK2 application.
 ifeq ($(shell uname -s | cut -c1-5 | tr A-Z a-z),mingw)
 GTKSYS = win32
 else
 GTKSYS = x11
 endif
-CFLAGS_gtk  = $(shell pkg-config --cflags gtk+-$(GTKSYS)-2.0)
+CFLAGS_gtk = $(shell $(HOST_PKG_CONFIG) --cflags gtk+-$(GTKSYS)-2.0 2>/dev/null)
 LDFLAGS_gtk =
-LIBS_gtk    = $(filter-out -lpng%,$(shell pkg-config --libs gtk+-$(GTKSYS)-2.0))
-
-CFLAGS_png  =
-LDFLAGS_png =
-LIBS_png    = -lpng -lz
-
-CFLAGS_vorbis  =
-LDFLAGS_vorbis =
-LIBS_vorbis    = -lvorbisfile -lvorbis -logg
-
-CFLAGS_lame  =
-LDFLAGS_lame =
-LIBS_lame    = -lmp3lame
-
-ifneq ($(GENERIC),)
-LIBS_png    := $(LIBS_png:-l%=/usr/lib/lib%.a)
-LIBS_vorbis := $(LIBS_vorbis:-l%=/usr/lib/lib%.a)
-LIBS_lame   := $(LIBS_lame:-l%=/usr/lib/lib%.a)
-endif
+LIBS_gtk = $(filter-out -lpng%,$(shell $(HOST_PKG_CONFIG) --libs gtk+-$(GTKSYS)-2.0 2>/dev/null))
 
 ######################################
 
 # Programs to build and their sources/flags
 
-PROGRAMS = AquariaPSPBuilder build-pkg oggtomp3 pngtotex
-
-AquariaPSPBuilder_SOURCES = AquariaPSPBuilder.c quantize.c zoom.c
+ASSET_PROGRAMS = oggtomp3 pngtotex
+CLI_PROGRAMS = $(ASSET_PROGRAMS) build-pkg
+PROGRAMS = AquariaPSPBuilder $(CLI_PROGRAMS)
 AquariaPSPBuilder_AUTOGEN = AquariaPSPBuilder-eboot.i \
                             AquariaPSPBuilder-scripts.i \
                             AquariaPSPBuilder-ui.i
+
+AquariaPSPBuilder_SOURCES = AquariaPSPBuilder.c quantize.c zoom.c
 AquariaPSPBuilder_DEPS    = ../src/common.h ../src/resource/package-pkg.h \
                             ../src/texture.h quantize.h sse2.h zoom.h \
                             $(AquariaPSPBuilder_AUTOGEN)
 AquariaPSPBuilder_CFLAGS  = $(SYS_CFLAGS) $(CFLAGS) -DIN_TOOL $(CFLAGS_gtk) \
                             $(CFLAGS_vorbis) $(CFLAGS_lame) $(CFLAGS_png) \
-                            -DHG_REVISION=\"$(shell hg id -n)\"
+                            -DHG_REVISION=\"$(shell hg id -n 2>/dev/null || echo unknown)\"
 AquariaPSPBuilder_LDFLAGS = $(LDFLAGS) $(LDFLAGS_gtk) \
                             $(LDFLAGS_vorbis) $(LDFLAGS_lame) $(LDFLAGS_png)
 AquariaPSPBuilder_LIBS    = $(LIBS) $(LIBS_gtk) \
-                            $(LIBS_vorbis) $(LIBS_lame) $(LIBS_png)
+                            $(LIBS_vorbis) $(LIBS_lame) $(LIBS_png) -lm
 
 build-pkg_SOURCES = build-pkg.c
 build-pkg_DEPS    = ../src/common.h ../src/resource/package-pkg.h
 build-pkg_CFLAGS  = $(SYS_CFLAGS) $(CFLAGS) -DIN_TOOL
+build-pkg_LDFLAGS = $(LDFLAGS)
+build-pkg_LIBS    = $(LIBS)
 
 oggtomp3_SOURCES  = oggtomp3.c
 oggtomp3_DEPS     = ../src/common.h
 oggtomp3_CFLAGS   = $(SYS_CFLAGS) $(CFLAGS) -DIN_TOOL $(CFLAGS_vorbis) $(CFLAGS_lame)
-oggtomp3_LDFLAGS  = $(LDFLAGS) $(LDFLAGS_vorbis) $(LDFLAGS_lame)
-oggtomp3_LIBS     = $(LIBS)    $(LIBS_vorbis)    $(LIBS_lame)
+oggtomp3_LDFLAGS  = $(LDFLAGS)
+oggtomp3_LIBS     = $(LIBS) $(LIBS_vorbis) $(LIBS_lame) -lm
 
 pngtotex_SOURCES  = pngtotex.c quantize.c zoom.c
 pngtotex_DEPS     = ../src/common.h ../src/texture.h quantize.h sse2.h zoom.h
 pngtotex_CFLAGS   = $(SYS_CFLAGS) $(CFLAGS) -DIN_TOOL $(CFLAGS_png)
-pngtotex_LDFLAGS  = $(LDFLAGS) $(LDFLAGS_png)
-pngtotex_LIBS     = $(LIBS)    $(LIBS_png)
+pngtotex_LDFLAGS  = $(LDFLAGS)
+pngtotex_LIBS     = $(LIBS) $(LIBS_png) -lm
 
 ###########################################################################
 
 # Build rules
 
-.PHONY: all clean
-all: $(PROGRAMS:%=%$(EXEEXT))
+.PHONY: all asset-tools cli-tools all-tools clean
+# Default to the useful native command-line tools; the legacy GUI can be built
+# explicitly with `make AquariaPSPBuilder` on systems that still provide GTK2.
+all: cli-tools
+asset-tools: $(ASSET_PROGRAMS:%=%$(EXEEXT))
+cli-tools: $(CLI_PROGRAMS:%=%$(EXEEXT))
+all-tools: $(PROGRAMS:%=%$(EXEEXT))
 clean:
 	rm -f $(PROGRAMS:%=%$(EXEEXT)) $(AquariaPSPBuilder_AUTOGEN)
 
 AquariaPSPBuilder$(EXEEXT): $(AquariaPSPBuilder_SOURCES) $(AquariaPSPBuilder_DEPS) Makefile
-	$(CC) $(AquariaPSPBuilder_CFLAGS) $(AquariaPSPBuilder_SOURCES) \
+	$(HOST_ENV) $(CC) $(AquariaPSPBuilder_CFLAGS) $(AquariaPSPBuilder_SOURCES) \
 		$(AquariaPSPBuilder_LDFLAGS) $(AquariaPSPBuilder_LIBS) -o $@
 
 build-pkg$(EXEEXT): $(build-pkg_SOURCES) $(build-pkg_DEPS) Makefile
-	$(CC) $(build-pkg_CFLAGS) $(build-pkg_SOURCES) \
+	$(HOST_ENV) $(CC) $(build-pkg_CFLAGS) $(build-pkg_SOURCES) \
 		$(build-pkg_LDFLAGS) $(build-pkg_LIBS) -o $@
 
 oggtomp3$(EXEEXT): $(oggtomp3_SOURCES) $(oggtomp3_DEPS) Makefile
-	$(CC) $(oggtomp3_CFLAGS) $(oggtomp3_SOURCES) \
+	$(HOST_ENV) $(CC) $(oggtomp3_CFLAGS) $(oggtomp3_SOURCES) \
 		$(oggtomp3_LDFLAGS) $(oggtomp3_LIBS) -o $@
 
 pngtotex$(EXEEXT): $(pngtotex_SOURCES) $(pngtotex_DEPS) Makefile
-	$(CC) $(pngtotex_CFLAGS) $(pngtotex_SOURCES) \
+	$(HOST_ENV) $(CC) $(pngtotex_CFLAGS) $(pngtotex_SOURCES) \
 		$(pngtotex_LDFLAGS) $(pngtotex_LIBS) -o $@
 
 #-------------------------------------

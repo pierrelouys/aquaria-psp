@@ -26,7 +26,9 @@
  * lest the resultant palette end up suboptimal for all of them.
  */
 
-#include <strings.h>
+#include <math.h>  /* Include before common.h symbol remapping on modern glibc. */
+#include <strings.h>  /* strcasecmp is used by common.h in native tools. */
+
 #include "../src/common.h"
 #include "../src/texture.h"
 
@@ -233,7 +235,7 @@ static int convert_to_8bpp(const char **files, unsigned int num_files,
             DMSG("Pathname too long: %s", files[i]);
             goto error_free_textures;
         }
-        if (strcasecmp(pathbuf + pathlen - 4, ".png") == 0) {
+        if (pathlen >= 4 && stricmp(pathbuf + pathlen - 4, ".png") == 0) {
             pathbuf[pathlen-4] = 0;
             pathlen -= 4;
         }
@@ -244,6 +246,7 @@ static int convert_to_8bpp(const char **files, unsigned int num_files,
         }
 
         free(textures[i]);
+        textures[i] = NULL;
     }
 
     /* All done! */
@@ -256,8 +259,8 @@ static int convert_to_8bpp(const char **files, unsigned int num_files,
   error_free_textures:
     for (i = 0; i < num_files; i++) {
         free(textures[i]);
-        free(textures);
     }
+    free(textures);
   error_return:
     return 0;
 }
@@ -311,7 +314,7 @@ static int convert_to_32bpp(const char **files, unsigned int num_files,
             free(texture);
             return 0;
         }
-        if (strcasecmp(pathbuf + pathlen - 4, ".png") == 0) {
+        if (pathlen >= 4 && stricmp(pathbuf + pathlen - 4, ".png") == 0) {
             pathbuf[pathlen-4] = 0;
             pathlen -= 4;
         }
@@ -378,8 +381,16 @@ static Texture *read_png(const char *path)
         (void *)path, png_error_callback, png_warning_callback
     );
     png_volatile = png;
+    if (!png) {
+        DMSG("Could not allocate libpng reader");
+        goto error;
+    }
     png_infop info = png_create_info_struct(png);
     info_volatile = info;
+    if (!info) {
+        DMSG("Could not allocate libpng image info");
+        goto error;
+    }
     png_init_io(png, f);
 
     /* Read the image information. */
@@ -393,30 +404,37 @@ static Texture *read_png(const char *path)
         DMSG("Interlaced images not supported");
         goto error;
     }
-    if (bit_depth < 8) {
-        DMSG("Bit depth %d not supported", bit_depth);
-        goto error;
+
+    /* Normalize all accepted PNG color types to 8-bit RGBA.  In particular,
+     * gray+alpha must become RGB+alpha, and low-bit-depth grayscale images
+     * need expanding before gray-to-RGB conversion. */
+    const int has_alpha = (color_type & PNG_COLOR_MASK_ALPHA) != 0;
+    const int has_trns = png_get_valid(png, info, PNG_INFO_tRNS) != 0;
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
+        png_set_expand_gray_1_2_4_to_8(png);
     }
-
-    /* Set up image transformation parameters. */
-
     if (color_type == PNG_COLOR_TYPE_PALETTE) {
         png_set_palette_to_rgb(png);
-    } else if (color_type == PNG_COLOR_TYPE_GRAY) {
+    } else if (color_type == PNG_COLOR_TYPE_GRAY
+            || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
         png_set_gray_to_rgb(png);
     }
     if (bit_depth == 16) {
         png_set_strip_16(png);
     }
-    if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+    if (has_trns) {
         png_set_tRNS_to_alpha(png);
     }
-    if (color_type == PNG_COLOR_TYPE_RGB
-     || color_type == PNG_COLOR_TYPE_GRAY
-    ) {
+    if (!has_alpha && !has_trns) {
         png_set_add_alpha(png, 0xFF, PNG_FILLER_AFTER);
     }
     png_read_update_info(png, info);
+    if (png_get_channels(png, info) != 4
+     || png_get_bit_depth(png, info) != 8
+     || png_get_rowbytes(png, info) != (png_size_t)width * 4) {
+        DMSG("PNG could not be normalized to 8-bit RGBA");
+        goto error;
+    }
 
     /* Create the texture structure. */
 
@@ -556,6 +574,7 @@ static int shrink_texture(Texture *tex)
     if (!tempbuf) {
         fprintf(stderr, "Out of memory for shrink buffer (%d bytes)\n",
                 new_width * new_height * 4);
+        return 0;
     }
 
     ZoomInfo *zi = zoom_init(tex->width, tex->height,
@@ -738,7 +757,7 @@ static int swizzle_texture(Texture *tex)
         uint32_t *dest = pixels;
 
         int y;
-        for (y = 0; y < tex->height; y += 8, src += 8*stride_words) {
+        for (y = 0; y < height; y += 8, src += 8*stride_words) {
             memcpy(tempbuf, src, 8 * (stride_words*4));
             const uint32_t *tempsrc = tempbuf;
             int x;
@@ -852,7 +871,11 @@ static int write_tex(Texture *tex, const char *path)
         stride = align_up(stride/2, tex->indexed ? 16 : 4);
     }
 
-    fclose(f);
+    if (fclose(f) != 0) {
+        perror(path);
+        remove(path);
+        return 0;
+    }
     return 1;
 }
 

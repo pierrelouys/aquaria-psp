@@ -6,6 +6,8 @@
  * 8-bit-per-pixel indexed-color images.
  */
 
+#include <math.h>  /* Include before common.h symbol remapping on modern glibc. */
+
 #include "../src/common.h"
 #ifdef USE_SSE2
 # include "sse2.h"

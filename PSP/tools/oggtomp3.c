@@ -17,7 +17,9 @@
  * replacing any .ogg extension in the input filenames.
  */
 
-#include <strings.h>
+#include <math.h>  /* Include before common.h symbol remapping on modern glibc. */
+#include <strings.h>  /* strcasecmp is used by common.h in native tools. */
+
 #include "../src/common.h"
 
 #include <vorbis/vorbisfile.h>
@@ -82,7 +84,7 @@ static int convert_to_mp3(const char *path)
         DMSG("Pathname too long: %s", path);
         goto error_return;
     }
-    if (strcasecmp(mp3_pathbuf + pathlen - 4, ".ogg") == 0) {
+    if (pathlen >= 4 && stricmp(mp3_pathbuf + pathlen - 4, ".ogg") == 0) {
         mp3_pathbuf[pathlen-4] = 0;
         pathlen -= 4;
     }
