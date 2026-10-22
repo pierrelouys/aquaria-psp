@@ -1210,6 +1210,18 @@ luaFunc(toggleCursor)
 	luaReturnNum(0);
 }
 
+// Compatibility with title/menu scripts shipped in some Aquaria data builds.
+// Older PSP bindings did not expose stopCursorGlow(), although the same fade
+// behavior is used by the native gameplay cursor handling.
+luaFunc(stopCursorGlow)
+{
+	if (dsq->cursorGlow)
+		dsq->cursorGlow->alpha.interpolateTo(0, 0.2);
+	if (dsq->cursorBlinker)
+		dsq->cursorBlinker->alpha.interpolateTo(0, 0.1);
+	luaReturnNum(0);
+}
+
 luaFunc(toggleBlackBars)
 {
 	dsq->toggleBlackBars(getBool(L, 1));
@@ -7650,6 +7662,7 @@ static const struct {
 	luaRegister(toggleLiCombat),
 
 	luaRegister(toggleCursor),
+	luaRegister(stopCursorGlow),
 	luaRegister(toggleBlackBars),
 	luaRegister(setBlackBarsColor),
 
