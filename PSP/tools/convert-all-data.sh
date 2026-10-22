@@ -1,82 +1,96 @@
-#!/usr/bin/env bash
+#!/bin/sh
 #
 # Aquaria PSP port
 # Copyright (C) 2010 Andrew Church <achurch@achurch.org>
 #
-# Convert Aquaria PNG textures and Ogg Vorbis audio to the formats used by
-# the PSP port.  The converter algorithms and on-disk asset formats are kept
-# in pngtotex.c and oggtomp3.c; this script only orchestrates those tools.
+# tools/convert-all-data.sh: Simple script to convert all Aquaria textures
+# (*.png) and audio files (*.ogg) for use on the PSP.
+#
 
-set -Eeuo pipefail
+######################################
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# Simple function to print an "[X/N] pathname" status line.
 
-usage() {
-    cat <<USAGE
-Usage: $0 [-f] <Aquaria-data-directory>
-
-Converts all PNG textures to the PSP's half-size indexed .tex format and all
-Ogg Vorbis audio to MP3, placing each converted file beside its original.
-Original PNG and Ogg files are retained. The directory is checked for an
-Aquaria title logo unless -f is specified.
-
-Build the command-line tools first with:
-    make -C "$SCRIPT_DIR" cli-tools
-USAGE
+status() {
+    index=$1
+    total=$2
+    name=$3
+    width=`echo -n $total | wc -c`
+    printf "   [%*d/%d] %s\n" $width $index $total $path
 }
 
-FORCE=0
-if [[ ${1-} == -f ]]; then
+######################################
+
+echo ""
+echo "Aquaria PSP data conversion script"
+echo ""
+
+FORCE=""
+if test "x$1" = "x-f"; then
     FORCE=1
     shift
 fi
-if [[ $# -ne 1 || ! -d $1 ]]; then
-    usage >&2
-    exit 2
-fi
 
-DIR=$(cd -- "$1" && pwd -P)
-if (( ! FORCE )) && [[ ! -f "$DIR/gfx/title/logo.png" ]]; then
-    printf 'error: %q does not look like an Aquaria data directory (missing gfx/title/logo.png)\n' "$DIR" >&2
-    printf 'If this is intentional, rerun with -f.\n' >&2
+if test -z "$1" -o \! -d "$1"; then
+    echo "Usage: $0 <Aquaria-data-directory>"
+    echo ""
+    echo "This script converts all *.png texture files and *.ogg audio"
+    echo "files in the given directory to the *.tex and *.mp3 formats"
+    echo "preferred for the PSP port.  While it is not necessary to run"
+    echo "this script, Aquaria will run very slowly if only the stock"
+    echo "*.png and *.ogg files are available, so use of this script is"
+    echo "highly recommended.  This script will not touch your existing"
+    echo "data files, but the new *.tex and *.mp3 files will be placed"
+    echo "in the same directories, so you may want to make a copy of"
+    echo "your existing data files and operate on that copy instead, e.g.:"
+    echo ""
+    echo "    cp -a /games/aquaria /games/aquaria-psp"
+    echo "    $0 /games/aquaria-psp"
+    echo ""
+    echo "In order to run this script, the \"pngtotex\" and \"oggtomp3\""
+    echo "programs must be present in the current directory."
+    echo ""
     exit 1
 fi
 
-for tool in pngtotex oggtomp3; do
-    if [[ ! -x "$SCRIPT_DIR/$tool" ]]; then
-        printf 'error: converter not found or not executable: %s\n' "$SCRIPT_DIR/$tool" >&2
-        printf 'Build the tools with: make -C %q cli-tools\n' "$SCRIPT_DIR" >&2
+set -e
+DIR=$1
+
+if test -z "${FORCE}"; then
+    echo "Verifying target directory."
+    if test \! -f "${DIR}/gfx/title/logo.png"; then
+        echo >&2 "${DIR} doesn't look like an Aquaria data directory\!"
+        echo >&2 "If you're absolutely sure this is the correct directory,"
+        echo >&2 "run this script with the \"-f\" option:"
+        echo >&2 ""
+        echo >&2 "    $0 -f '${DIR}'"
+        echo >&2 ""
         exit 1
     fi
+fi
+
+echo "Looking for texture and audio files."
+NUM_PNG=`cd "${DIR}"; find * -name \*.png -print | wc -l`
+NUM_OGG=`cd "${DIR}"; find * -name \*.ogg -print | wc -l`
+
+echo "Converting ${NUM_PNG} textures..."
+n=1
+(cd "${DIR}"; find * -name \*.png -print) | while read path; do
+    status ${n} ${NUM_PNG} ${path}
+    ./pngtotex -8 "${DIR}/${path}"
+    n=$[n+1]
 done
+echo "Texture conversion complete."
 
-# NUL-delimited, sorted paths correctly preserve spaces, tabs, leading dashes,
-# and other legal filename characters. The original data files are never changed.
-mapfile -d '' -t PNG_FILES < <(find "$DIR" -type f -iname '*.png' -print0 | sort -z)
-mapfile -d '' -t OGG_FILES < <(find "$DIR" -type f -iname '*.ogg' -print0 | sort -z)
-
-status() {
-    local current=$1 total=$2 pathname=$3 width=${#2}
-    printf '   [%*d/%d] %s\n' "$width" "$current" "$total" "$pathname"
-}
-
-printf '\nAquaria PSP data conversion script\n\n'
-printf 'Converting %d textures...\n' "${#PNG_FILES[@]}"
-current=1
-total=${#PNG_FILES[@]}
-for path in "${PNG_FILES[@]}"; do
-    status "$current" "$total" "${path#"$DIR"/}"
-    "$SCRIPT_DIR/pngtotex" -8 "$path"
-    current=$((current + 1))
+echo "Converting ${NUM_OGG} audio files..."
+n=1
+(cd "${DIR}"; find * -name \*.ogg -print) | while read path; do
+    status ${n} ${NUM_OGG} ${path}
+    ./oggtomp3 "${DIR}/${path}"
+    n=$[n+1]
 done
-printf 'Texture conversion complete.\n\n'
+echo "Audio file conversion complete."
 
-printf 'Converting %d audio files...\n' "${#OGG_FILES[@]}"
-current=1
-total=${#OGG_FILES[@]}
-for path in "${OGG_FILES[@]}"; do
-    status "$current" "$total" "${path#"$DIR"/}"
-    "$SCRIPT_DIR/oggtomp3" "$path"
-    current=$((current + 1))
-done
-printf 'Audio file conversion complete.\n\nAll files have been successfully converted.\n'
+echo ""
+echo "All files have been successfully converted."
+echo ""

@@ -13,8 +13,6 @@
 /**** Leading C++ junk. ****/
 
 #ifdef __cplusplus
-/* PSP FIX: load libstdc++ before macros rename C++ keywords in PSP headers. */
-#include <bits/stdc++.h>
 #define this _this
 #define private _private
 extern "C" {

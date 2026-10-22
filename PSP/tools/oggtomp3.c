@@ -17,8 +17,8 @@
  * replacing any .ogg extension in the input filenames.
  */
 
-#include <math.h>  /* Include before common.h symbol remapping on modern glibc. */
-#include <strings.h>  /* strcasecmp is used by common.h in native tools. */
+#include <math.h>  /* Host tool: include before common.h symbol remapping. */
+#include <strings.h>  /* Host tool: declaration for case-insensitive string APIs. */
 
 #include "../src/common.h"
 
@@ -84,7 +84,7 @@ static int convert_to_mp3(const char *path)
         DMSG("Pathname too long: %s", path);
         goto error_return;
     }
-    if (pathlen >= 4 && stricmp(mp3_pathbuf + pathlen - 4, ".ogg") == 0) {
+    if (stricmp(mp3_pathbuf + pathlen - 4, ".ogg") == 0) {
         mp3_pathbuf[pathlen-4] = 0;
         pathlen -= 4;
     }

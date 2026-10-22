@@ -162,7 +162,7 @@ enum Direction
 	}
 
 	#define _DBG_NEW new(__FILE__,__LINE__)
-	/* PSP: disabled debug-new macro */
+	#define new _DBG_NEW
 
 
 	//#endif // _DBG_NEW
@@ -314,8 +314,3 @@ void openURL(const std::string &url);
 
 std::string underscoresToSpaces(const std::string &str);
 std::string spacesToUnderscores(const std::string &str);
-
-/* PSP FIX: keep placement new as a C++ keyword. */
-#ifdef new
-#undef new
-#endif

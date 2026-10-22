@@ -819,6 +819,9 @@ int fiprintf(FILE *f, const char *format, ...)
 
 int sscanf(const char *buffer, const char *format, ...)
 {
+    /* Keep the original input for formats handled by Newlib below. */
+    const char *original_buffer = buffer;
+
     while (*buffer == ' '
         || *buffer == '\t'
         || *buffer == '\r'
@@ -860,8 +863,15 @@ int sscanf(const char *buffer, const char *format, ...)
 
     } else {
 
-        DMSG("Invalid format string: %s", format);
-        return 0;
+        /* The 2010 replacement only implemented the two formats TinyXML used.
+         * Newer toolchain/runtime code may use other formats (including
+         * pthread-related patterns), so delegate those to Newlib instead of
+         * treating every non-TinyXML format as an unconditional failure. */
+        va_list args;
+        va_start(args, format);
+        const int result = vsscanf(original_buffer, format, args);
+        va_end(args);
+        return result;
 
     }
 }

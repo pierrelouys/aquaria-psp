@@ -1613,9 +1613,9 @@ Buffer SoundManager::loadLocalSound(const std::string &filename)
 
 #ifdef BBGE_BUILD_FMODEX
 	return b;
-#else
-	return BBGE_AUDIO_NOCHANNEL;
 #endif
+
+	return BBGE_AUDIO_NOCHANNEL;
 }
 
 void SoundManager::setMusicSpeed(float speed)
