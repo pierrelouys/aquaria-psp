@@ -13,8 +13,6 @@
 /**** Leading C++ junk. ****/
 
 #ifdef __cplusplus
-#define this _this
-#define private _private
 extern "C" {
 #endif
 
@@ -38,6 +36,15 @@ extern "C" {
 #define Texture PSPTexture
 
 #include "common.h"
+
+/* Do not remap C++ keywords until after common.h has included system headers.
+ * Newer libstdc++ math.h wrappers pull in C++ templates which use `private`.
+ */
+#ifdef __cplusplus
+#define this _this
+#define private _private
+#endif
+
 #include "fakegl.h"
 #include "graphics.h"
 #include "init.h"
